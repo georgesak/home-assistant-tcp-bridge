@@ -1,7 +1,7 @@
 {
   "domain": "tcp_bridge",
   "name": "TCP Bridge",
-  "documentation": "https://github.com/georgesak/HA_TCP_Bridge",
+  "documentation": "https://github.com/georgesak/home-assistant-tcp-bridge",
   "dependencies": [],
   "codeowners": ["@georgesak"],
   "requirements": [],
