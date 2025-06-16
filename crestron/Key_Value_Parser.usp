@@ -1,0 +1,92 @@
+/*******************************************************************************************
+  PROGRAM DESCRIPTION: This module parses an input string with the format "key=value".
+                       If the 'key' matches the string parameter, the 'value' is
+                       sent to the string output.
+
+  INPUTS:
+    RX: The string to be parsed, e.g., "entity=value"
+
+  PARAMETERS:
+    Key_To_Match: The key that the module should look for.
+
+  OUTPUTS:
+    Value_Out:     The string output for the extracted value.
+*******************************************************************************************/
+
+#SYMBOL_NAME "Key Value Parser v1.0"
+        
+#DEFINE_CONSTANT MAX_KEYS 1000
+// ------------------
+// I/O DEFINITIONS
+// ------------------
+
+// -- Input --
+STRING_INPUT RX[1024];
+
+// -- Parameter --
+STRING_PARAMETER Key_To_Match[MAX_KEYS][1024];
+
+// -- Outputs --
+STRING_OUTPUT Value_Out[MAX_KEYS];
+
+// ------------------
+// GLOBAL VARIABLES
+// ------------------
+
+// ------------------
+// LOGIC
+// ------------------
+
+// Main function runs once when the program starts.
+FUNCTION Main()
+{
+	INTEGER Equals_Position;
+    STRING  Received[1024];
+	STRING  Extracted_Key[255];
+	STRING  Extracted_Value[255];
+    INTEGER Num_Keys;
+    INTEGER X;
+
+    WAITFORINITIALIZATIONCOMPLETE();
+
+	// Calculate the number of keys to match.
+	FOR (Num_Keys = 1 to MAX_KEYS)
+    {
+        if (Len(Key_To_Match[NUM_KEYS]) < 1)
+            break;
+    }
+
+	while (1)
+    {
+		Received = GATHER("\x0A", RX);
+	    
+		// Find the position of the '=' delimiter in the input string.
+	    Equals_Position = FIND("=", Received);
+	
+	    // Check if the delimiter was actually found.
+	    // A result > 0 means it exists. 0 means it does not.
+	    IF (Equals_Position > 0)
+	    {
+	        // Extract the key, which is the part of the string to the left of the '='.
+	        // We use (Equals_Position - 1) to not include the '=' itself.
+	        Extracted_Key = LEFT(Received, Equals_Position - 1);
+	
+			FOR (X = 1 to NUM_KEYS)
+	        {
+		        // Compare the extracted key with our target key parameter.
+		        IF (Extracted_Key = Key_To_Match[X])
+		        {
+		            // --- MATCH FOUND ---
+		            // Extract the value, which is everything to the right of the '='.
+		            // The MID function is used to grab a section from the middle of a string.
+		            // We start at the position right after '=' and take the remaining length of the string.
+		            Extracted_Value = MID(Received, Equals_Position + 1, LEN(Received) - Equals_Position - 1);
+		
+		            // Set the outputs to reflect the match.
+		            Value_Out[X] = Extracted_Value;
+	                break;
+		        }
+		    }
+	    }
+	}
+}
