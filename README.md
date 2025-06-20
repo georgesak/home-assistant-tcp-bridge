@@ -17,6 +17,8 @@ This custom component for Home Assistant establishes a TCP server that allows ex
 *   **Custom Message Sending**: Home Assistant services can send arbitrary key-value strings to connected clients.
 *   **Automatic Reconnection Handling**: Basic handling for client disconnections.
 
+I wote this custom component to interface with my Crestron controller. A sample Crestron module and app is also provided. But the module is not specific to Crestron and can be used with any TCP client.
+
 ## Installation
 
 1.  Copy the `tcp_bridge` folder into your Home Assistant `custom_components` directory.
