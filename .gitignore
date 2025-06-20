@@ -1,1 +1,9 @@
 /crestron/SPlsWork
+/crestron/*.lpz
+/crestron/*.hash
+/crestron/*.sig
+/crestron/*.sm2
+/crestron/*.smft
+/crestron/*.ASV
+/crestron/HA_TCP_Bridge_Test_Program_AV3_archive.zip
+/crestron/HA_TCP_Bridge_Test_Program_AV3_compiled.zip

@@ -61,6 +61,12 @@ VAL_KEY_SCHEMA = vol.Schema(
     }
 )
 
+ENTITY_ID_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): vol.All(cv.ensure_list, [cv.string])
+    }
+)
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """
     Set up the TCP Bridge component from configuration.yaml.
@@ -184,6 +190,94 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         "send_key_val",
         send_key_val,
         schema=VAL_KEY_SCHEMA
+    )
+
+    async def add_monitored_entities(call):
+        """
+        Home Assistant service to add new entities to the monitored_entities list.
+
+        Args:
+            call: The service call object, containing the 'entity_id' data (list of entity IDs).
+        """
+        entity_ids_to_add = call.data.get("entity_id")
+        if not entity_ids_to_add:
+            _LOGGER.error("Attempted to add entities without providing 'entity_id'.")
+            return
+
+        monitored_entities = hass.data[DOMAIN].get('monitored_entities', [])
+        for entity_id_to_add in entity_ids_to_add:
+            if entity_id_to_add not in monitored_entities:
+                monitored_entities.append(entity_id_to_add)
+                _LOGGER.info(f"Added entity '{entity_id_to_add}' to monitored_entities.")
+            else:
+                _LOGGER.debug(f"Entity '{entity_id_to_add}' is already in monitored_entities. No action taken.")
+        hass.data[DOMAIN]['monitored_entities'] = monitored_entities
+
+    hass.services.async_register(
+        DOMAIN,
+        "add_monitored_entities",
+        add_monitored_entities,
+        schema=ENTITY_ID_SCHEMA
+    )
+
+    async def remove_monitored_entities(call):
+        """
+        Home Assistant service to remove entities from the monitored_entities list.
+
+        Args:
+            call: The service call object, containing the 'entity_id' data (list of entity IDs).
+        """
+        entity_ids_to_remove = call.data.get("entity_id")
+        if not entity_ids_to_remove:
+            _LOGGER.error("Attempted to remove entities without providing 'entity_id'.")
+            return
+
+        monitored_entities = hass.data[DOMAIN].get('monitored_entities', [])
+        for entity_id_to_remove in entity_ids_to_remove:
+            if entity_id_to_remove in monitored_entities:
+                monitored_entities.remove(entity_id_to_remove)
+                _LOGGER.info(f"Removed entity '{entity_id_to_remove}' from monitored_entities.")
+            else:
+                _LOGGER.debug(f"Entity '{entity_id_to_remove}' is not in monitored_entities. No action taken.")
+        hass.data[DOMAIN]['monitored_entities'] = monitored_entities
+
+    hass.services.async_register(
+        DOMAIN,
+        "remove_monitored_entities",
+        remove_monitored_entities,
+        schema=ENTITY_ID_SCHEMA
+    )
+
+    async def get_entity(call):
+        """
+        Home Assistant service to retrieve the current state of a specific entity.
+
+        This service sends the current state and attributes of the specified entity
+        to all connected TCP clients. Useful for clients that need an immediate
+        state sync for a particular entity.
+
+        Args:
+            call: The service call object, containing the 'entity_id' data.
+        """
+        entity_ids_to_get = call.data.get("entity_id")
+        if not entity_ids_to_get:
+            _LOGGER.error("Attempted to get an entity without providing 'entity_id'.")
+            return
+
+        for entity_id_to_get in entity_ids_to_get:
+            state = hass.states.get(entity_id_to_get)
+            if not state:
+                _LOGGER.debug(f"Entity {entity_id_to_get} not found in Home Assistant states. Cannot send update.")
+                return
+
+            _LOGGER.info(f"Sending state of entity '{entity_id_to_get}'.")
+            await _send_state_update_to_clients(hass, entity_id_to_get, None, state)
+
+    hass.services.async_register(
+        DOMAIN,
+        "get_entity",
+        get_entity,
+        schema=ENTITY_ID_SCHEMA
     )
 
     return True # Return True to indicate successful setup

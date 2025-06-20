@@ -3,7 +3,9 @@
 **⚠️ WARNING: Security Advisory ⚠️**
 This component creates an unencrypted and unauthenticated TCP server. It is designed for local network use only. **DO NOT expose the configured port to the public internet** without implementing proper security measures (e.g., VPN, SSH tunnel, or a secure proxy). Exposing this port directly to the internet can lead to unauthorized access and control of your Home Assistant instance. You have been warned!
 
-This custom component for Home Assistant establishes a TCP server that allows external applications to interact with Home Assistant. It provides a bridge for:
+I wote this custom component to interface with my Crestron controller. A sample Crestron module and app is also provided. But the module is not specific to Crestron and can be used with any TCP client (Python example is provided in this documentation as well).
+
+At a high-level, this custom component for Home Assistant establishes a TCP server that allows external applications to interact with Home Assistant. It provides a bridge for:
 1.  Receiving real-time state updates for specified Home Assistant entities.
 2.  Sending commands to Home Assistant services (e.g., turning lights on/off, setting thermostat temperatures).
 3.  Sending custom key-value messages from Home Assistant to connected TCP clients.
@@ -31,7 +33,7 @@ Add the following to your `configuration.yaml` file:
 ```yaml
 tcp_bridge:
   port: 8124 # Required: The port for the TCP server to listen on.
-  monitored_entities: # Optional: A list of entity IDs to monitor for state changes.
+  monitored_entities: # Optional: A list of entity IDs to monitor for state changes as soon as the component loads.
     - light.living_room
     - sensor.temperature_outside
     - switch.fan
@@ -40,7 +42,7 @@ tcp_bridge:
 ### Configuration Variables
 
 *   **`port`** (Required): The TCP port number on which the bridge server will listen for incoming connections.
-*   **`monitored_entities`** (Optional): A list of Home Assistant entity IDs (e.g., `light.living_room`, `sensor.temperature`) that you want to monitor. When the state or attributes of any of these entities change, an update will be sent to all connected TCP clients. If not specified, no entities will be monitored by default.
+*   **`monitored_entities`** (Optional): A list of Home Assistant entity IDs (e.g., `light.living_room`, `sensor.temperature`) that you want to monitor as soon as the component loads. When the state or attributes of any of these entities change, an update will be sent to all connected TCP clients. If not specified, no entities will be monitored by default.
 
 ## Usage
 
@@ -108,7 +110,7 @@ The TCP Bridge will respond with a simple `response=success (...)` or `response=
 
 ### Home Assistant Services Provided by TCP Bridge
 
-The component exposes two services that can be called from Home Assistant automations, scripts, or developer tools:
+The component exposes the following services that can be called from Home Assistant automations, scripts, or developer tools:
 
 #### `tcp_bridge.update_all_monitored`
 
@@ -147,6 +149,87 @@ key_val: "custom_message=Hello from Home Assistant!"
     - service: tcp_bridge.send_key_val
       data:
         key_val: "door_status=open"
+```
+
+#### `tcp_bridge.add_monitored_entities`
+
+This service allows you to dynamically add new entities to the list of monitored entities. State changes for these newly added entities will then be pushed to connected TCP clients.
+
+**Service Data:**
+
+```yaml
+entity_id:
+  - light.kitchen
+  - sensor.hallway_motion
+```
+
+*   **`entity_id`** (Required): A single entity ID string or a list of entity ID strings to add to the monitored list.
+
+**Example Automation:**
+
+```yaml
+- alias: "Add new entities to monitor"
+  trigger:
+    - platform: event
+      event_type: custom_event_add_entities
+  action:
+    - service: tcp_bridge.add_monitored_entities
+      data:
+        entity_id:
+          - light.kitchen
+          - sensor.hallway_motion
+```
+
+#### `tcp_bridge.remove_monitored_entities`
+
+This service allows you to dynamically remove entities from the list of monitored entities. Once removed, state changes for these entities will no longer be pushed to connected TCP clients.
+
+**Service Data:**
+
+```yaml
+entity_id:
+  - light.kitchen
+  - sensor.hallway_motion
+```
+
+*   **`entity_id`** (Required): A single entity ID string or a list of entity ID strings to remove from the monitored list.
+
+**Example Automation:**
+
+```yaml
+- alias: "Remove entities from monitoring"
+  trigger:
+    - platform: event
+      event_type: custom_event_remove_entities
+  action:
+    - service: tcp_bridge.remove_monitored_entities
+      data:
+        entity_id: light.kitchen
+```
+
+#### `tcp_bridge.get_entity`
+
+This service retrieves the current state of a specific entity and sends it to all connected TCP clients. This is useful for clients that need the current state of a particular entity on demand.
+
+**Service Data:**
+
+```yaml
+entity_id: "sensor.my_custom_sensor"
+```
+
+*   **`entity_id`** (Required): The entity ID string for which to retrieve the state.
+
+**Example Automation:**
+
+```yaml
+- alias: "Get state for specific sensor"
+  trigger:
+    - platform: time_pattern
+      minutes: "/5"
+  action:
+    - service: tcp_bridge.get_entity
+      data:
+        entity_id: sensor.my_custom_sensor
 ```
 
 ## Logging
